@@ -56,6 +56,7 @@
     <h1>Dashboard</h1>
     <p class="sub">Read-only. Not linked from the public site.
       <button class="refresh" onclick="loadReports()">Refresh</button>
+      <button class="refresh" onclick="logout()">Log out</button>
     </p>
     <div id="reports"></div>
   </div>
@@ -71,6 +72,15 @@ function saveAndLoad() {
   localStorage.setItem('hajja:convexUrl', url);
   localStorage.setItem('hajja:dashboardKey', key);
   loadReports();
+}
+
+function logout() {
+  localStorage.removeItem('hajja:convexUrl');
+  localStorage.removeItem('hajja:dashboardKey');
+  document.getElementById('convexUrl').value = '';
+  document.getElementById('dashboardKey').value = '';
+  document.getElementById('gate').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
 }
 
 async function loadReports() {
