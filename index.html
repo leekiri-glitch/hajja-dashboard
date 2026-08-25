@@ -45,9 +45,9 @@
 
   <div id="gate" class="gate">
     <h1>Hajja — Internal Reports</h1>
-    <p class="sub">Enter your Convex HTTP URL and reports key.</p>
+    <p class="sub">Enter your Convex HTTP URL and the Dashboard Key.</p>
     <input id="convexUrl" placeholder="https://your-deployment.convex.site" />
-    <input id="reportsKey" placeholder="Reports key" type="password" />
+    <input id="dashboardKey" placeholder="Dashboard Key" type="password" />
     <br />
     <button onclick="saveAndLoad()">Enter</button>
     <div id="gateError" class="error"></div>
@@ -64,19 +64,19 @@
 <script>
 function saveAndLoad() {
   const url = document.getElementById('convexUrl').value.trim().replace(/\/$/, '');
-  const key = document.getElementById('reportsKey').value.trim();
+  const key = document.getElementById('dashboardKey').value.trim();
   if (!url || !key) {
     document.getElementById('gateError').textContent = 'Both fields are required.';
     return;
   }
   localStorage.setItem('hajja:convexUrl', url);
-  localStorage.setItem('hajja:reportsKey', key);
+  localStorage.setItem('hajja:dashboardKey', key);
   loadReports();
 }
 
 async function loadReports() {
   const url = localStorage.getItem('hajja:convexUrl');
-  const key = localStorage.getItem('hajja:reportsKey');
+  const key = localStorage.getItem('hajja:dashboardKey');
   if (!url || !key) return;
 
   try {
@@ -85,8 +85,8 @@ async function loadReports() {
     });
     if (res.status === 401) {
       localStorage.removeItem('hajja:convexUrl');
-      localStorage.removeItem('hajja:reportsKey');
-      document.getElementById('gateError').textContent = 'Invalid key.';
+      localStorage.removeItem('hajja:dashboardKey');
+      document.getElementById('gateError').textContent = 'Invalid Dashboard Key.';
       document.getElementById('gate').style.display = 'block';
       document.getElementById('app').style.display = 'none';
       return;
@@ -154,7 +154,7 @@ function render(data) {
 // Auto-load if already configured.
 (function init() {
   const url = localStorage.getItem('hajja:convexUrl');
-  const key = localStorage.getItem('hajja:reportsKey');
+  const key = localStorage.getItem('hajja:dashboardKey');
   if (url && key) {
     document.getElementById('convexUrl').value = url;
     loadReports();
