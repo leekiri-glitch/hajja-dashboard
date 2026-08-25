@@ -2,10 +2,7 @@ name: Deploy internal dashboard
 
 on:
   push:
-    branches: [build-v1]
-    paths:
-      - "dashboard/**"
-      - ".github/workflows/dashboard-pages.yml"
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -28,6 +25,6 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: "dashboard"
+          path: "."
       - id: deployment
         uses: actions/deploy-pages@v4
