@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hajja — Internal Reports</title>
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #F7F0E6; color: #2b2118;
+    margin: 0; padding: 24px 16px 64px;
+  }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: #6F6256; font-size: 13px; margin-bottom: 24px; }
+  .gate {
+    max-width: 360px; margin: 80px auto; text-align: center;
+  }
+  .gate input {
+    width: 100%; box-sizing: border-box; padding: 12px 14px;
+    border: 1px solid rgba(184,138,59,0.4); border-radius: 10px;
+    font-size: 15px; margin-top: 12px;
+  }
+  .gate button, .refresh {
+    margin-top: 14px; padding: 10px 22px; border-radius: 999px;
+    border: 1px solid #B88A3B; background: #3D503B; color: #F7F0E6;
+    font-family: inherit; font-size: 14px; cursor: pointer;
+  }
+  .error { color: #b33; font-size: 13px; margin-top: 10px; }
+  section {
+    background: #FFFDF8; border: 1px solid rgba(184,138,59,0.25);
+    border-radius: 14px; padding: 18px 20px; margin-bottom: 20px;
+    max-width: 900px;
+  }
+  section h2 { font-size: 16px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #B88A3B; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid rgba(184,138,59,0.15); }
+  th { color: #8C7A65; font-weight: 600; text-transform: uppercase; font-size: 11px; }
+  pre { font-size: 12px; overflow-x: auto; background: rgba(184,138,59,0.06); padding: 10px; border-radius: 8px; }
+  #app { display: none; }
+</style>
+</head>
+<body>
+
+  <div id="gate" class="gate">
+    <h1>Hajja — Internal Reports</h1>
+    <p class="sub">Enter your Convex HTTP URL and reports key.</p>
+    <input id="convexUrl" placeholder="https://your-deployment.convex.site" />
+    <input id="reportsKey" placeholder="Reports key" type="password" />
+    <br />
+    <button onclick="saveAndLoad()">Enter</button>
+    <div id="gateError" class="error"></div>
+  </div>
+
+  <div id="app">
+    <h1>Hajja — Internal Reports</h1>
+    <p class="sub">Read-only. Not linked from the public site.
+      <button class="refresh" onclick="loadReports()">Refresh</button>
+    </p>
+    <div id="reports"></div>
+  </div>
+
+<script>
+function saveAndLoad() {
+  const url = document.getElementById('convexUrl').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('reportsKey').value.trim();
+  if (!url || !key) {
+    document.getElementById('gateError').textContent = 'Both fields are required.';
+    return;
+  }
+  localStorage.setItem('hajja:convexUrl', url);
+  localStorage.setItem('hajja:reportsKey', key);
+  loadReports();
+}
+
+async function loadReports() {
+  const url = localStorage.getItem('hajja:convexUrl');
+  const key = localStorage.getItem('hajja:reportsKey');
+  if (!url || !key) return;
+
+  try {
+    const res = await fetch(`${url}/reports`, {
+      headers: { 'x-reports-key': key },
+    });
+    if (res.status === 401) {
+      localStorage.removeItem('hajja:convexUrl');
+      localStorage.removeItem('hajja:reportsKey');
+      document.getElementById('gateError').textContent = 'Invalid key.';
+      document.getElementById('gate').style.display = 'block';
+      document.getElementById('app').style.display = 'none';
+      return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    render(data);
+  } catch (e) {
+    document.getElementById('gateError').textContent = 'Could not load reports: ' + e.message;
+    document.getElementById('gate').style.display = 'block';
+    document.getElementById('app').style.display = 'none';
+  }
+}
+
+function table(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return '<p style="color:#8C7A65;font-size:13px;">No data yet.</p>';
+  const cols = Object.keys(rows[0]).filter((c) => typeof rows[0][c] !== 'object');
+  let html = '<table><thead><tr>' + cols.map((c) => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  for (const r of rows) {
+    html += '<tr>' + cols.map((c) => `<td>${r[c] ?? ''}</td>`).join('') + '</tr>';
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function render(data) {
+  const el = document.getElementById('reports');
+  el.innerHTML = `
+    <section>
+      <h2>1 — Archetype Performance</h2>
+      ${table(data.archetypePerformance)}
+    </section>
+    <section>
+      <h2>2 — Entry Content Performance</h2>
+      ${table((data.entryContentPerformance || []).map((r) => ({
+        ...r,
+        resultArchetypes: JSON.stringify(r.resultArchetypes),
+      })))}
+    </section>
+    <section>
+      <h2>3 — Entry → Result Matrix</h2>
+      <pre>${JSON.stringify(data.entryToResultMatrix, null, 2)}</pre>
+    </section>
+    <section>
+      <h2>4 — Recommendation Quality</h2>
+      ${table(data.recommendationQuality)}
+    </section>
+    <section>
+      <h2>5 — Product Path / LTV</h2>
+      ${table((data.productPathLtv || []).map((r) => ({
+        contactId: r.contactId,
+        firstProduct: r.firstProduct,
+        nextProduct: r.nextProduct,
+        daysBetweenPurchases: r.daysBetweenPurchases,
+        totalRevenue: r.totalRevenue,
+        resultArchetype: r.resultArchetype,
+      })))}
+    </section>
+  `;
+}
+
+// Auto-load if already configured.
+(function init() {
+  const url = localStorage.getItem('hajja:convexUrl');
+  const key = localStorage.getItem('hajja:reportsKey');
+  if (url && key) {
+    document.getElementById('convexUrl').value = url;
+    loadReports();
+  }
+})();
+</script>
+</body>
+</html>
